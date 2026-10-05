@@ -292,4 +292,4 @@ $('calendar-prev').addEventListener('click', () => { calendarMonth = shiftMonth(
 $('calendar-next').addEventListener('click', () => { calendarMonth = shiftMonth(calendarMonth, 1); renderCalendar(); });
 $('refresh').addEventListener('click', () => void load(data.cycle.month, { retainCalendar: true }));
 $('retry').addEventListener('click', () => void load(data?.cycle.month, { retainCalendar: true }));
-void load();
+void load(new URLSearchParams(location.search).get('month') || undefined);

@@ -1,4 +1,5 @@
-import { availableMonths, cycleView, today, upcomingMonth, validMonth } from '../lib/domain.mjs';
+import { availableMonths, cycleView, PEOPLE, today, upcomingMonth, validMonth } from '../lib/domain.mjs';
+import { personalView } from '../lib/personal.mjs';
 import { decodeReceipt } from '../lib/receipts.mjs';
 import { importState, loadState, snapshots, updateState } from './store.mjs';
 import { Buffer } from 'node:buffer';
@@ -7,6 +8,8 @@ import { clearCookie, hasSession, loginPage, passwordMatches, sessionCookie } fr
 const securityHeaders = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'", 'Referrer-Policy': 'same-origin' };
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } });
 const redirect = (target, headers = {}) => new Response(null, { status: 303, headers: { Location: target, ...headers } });
+const loginTarget = value => ['/', '/sofia', '/daniel'].includes(value) ? value : '/';
+const personalActions = ['save-personal-expense', 'delete-personal-expense', 'record-personal-payment', 'reopen-personal-payment'];
 async function readBody(request, limit) {
   if (!request.body) return '';
   const reader = request.body.getReader(), chunks = []; let size = 0;
@@ -35,16 +38,24 @@ async function handle(request, env) {
   if (!env.APP_PASSWORD || env.APP_PASSWORD.length < 20) return json(503, { error: 'Falta configurar una clave de acceso segura para esta aplicación.' });
   if (request.method === 'POST' && request.headers.get('Origin') !== url.origin) return json(403, { error: 'La solicitud debe venir de esta página.' });
   if (url.pathname === '/login') {
-    if (request.method === 'GET') return new Response(loginPage(), { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+    if (request.method === 'GET') return new Response(loginPage('', loginTarget(url.searchParams.get('next'))), { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     if (request.method !== 'POST') return json(405, { error: 'Método no permitido.' });
     const form = new URLSearchParams(await readBody(request, 4096));
     const password = form.get('password') || '';
-    if (password.length > 256 || !await passwordMatches(password, env.APP_PASSWORD)) return new Response(loginPage('La clave no es correcta. Revisa e inténtalo de nuevo.'), { status: 401, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
-    return redirect('/', { 'Set-Cookie': await sessionCookie(env.APP_PASSWORD, url) });
+    const target = loginTarget(form.get('next'));
+    if (password.length > 256 || !await passwordMatches(password, env.APP_PASSWORD)) return new Response(loginPage('La clave no es correcta. Revisa e inténtalo de nuevo.', target), { status: 401, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+    return redirect(target, { 'Set-Cookie': await sessionCookie(env.APP_PASSWORD, url) });
   }
-  if (!await hasSession(request, env.APP_PASSWORD)) return url.pathname.startsWith('/api/') || url.pathname.startsWith('/comprobantes/') ? json(401, { error: 'Tu sesión terminó. Vuelve a entrar para continuar.' }) : redirect('/login');
+  if (!await hasSession(request, env.APP_PASSWORD)) {
+    const target = loginTarget(url.pathname.replace(/\/$/, ''));
+    return url.pathname.startsWith('/api/') || url.pathname.startsWith('/comprobantes/') ? json(401, { error: 'Tu sesión terminó. Vuelve a entrar para continuar.' }) : redirect(target === '/' ? '/login' : `/login?next=${encodeURIComponent(target)}`);
+  }
   if (url.pathname === '/logout' && request.method === 'POST') return redirect('/login', { 'Set-Cookie': clearCookie(url) });
-  if (request.method === 'GET' && ['/', '/app.js'].includes(url.pathname)) return env.ASSETS.fetch(request);
+  if (request.method === 'GET' && ['/', '/app.js', '/personal.js'].includes(url.pathname)) return env.ASSETS.fetch(request);
+  if (request.method === 'GET' && ['/sofia', '/daniel', '/sofia/', '/daniel/'].includes(url.pathname)) {
+    const asset = new URL(request.url); asset.pathname = '/personal';
+    return env.ASSETS.fetch(new Request(asset, request));
+  }
   if (['/api/import', '/api/import/receipt'].includes(url.pathname) && request.method === 'POST') {
     if (await env.DB.prepare('SELECT id FROM app_state WHERE id = 1').first()) return json(409, { error: 'Ya existen registros en la nube. No se sobrescribieron.' });
     const input = await readJSON(request, 1250000);
@@ -66,11 +77,19 @@ async function handle(request, env) {
   const date = today();
   const months = availableMonths(state, date);
   const payload = current => ({ revision: current.revision, warning: '', storage: 'cloud', availableMonths: availableMonths(current, date), cycle: cycleView(current, month, date) });
+  const personalPayload = (current, person, month) => ({ revision: current.revision, warning: '', storage: 'cloud', availableMonths: availableMonths(current, date), personal: personalView(current, person, month, date) });
   let month;
   if (url.pathname === '/api/cycle' && request.method === 'GET') {
     month = validMonth(url.searchParams.get('month') || months.find(m => m >= upcomingMonth(date)) || months.at(-1));
     if (!months.includes(month)) return json(400, { error: 'Ese vencimiento aún no está disponible. Se agregará mes con mes.' });
     return json(200, payload(state));
+  }
+  if (url.pathname === '/api/personal' && request.method === 'GET') {
+    const person = url.searchParams.get('person');
+    if (!Object.hasOwn(PEOPLE, person)) return json(400, { error: 'Elige el calendario de Sofía o Daniel.' });
+    month = validMonth(url.searchParams.get('month') || date.slice(0, 7));
+    if (!months.includes(month)) return json(400, { error: 'Ese mes aún no está disponible. Se agregará mes con mes.' });
+    return json(200, personalPayload(state, person, month));
   }
   if (url.pathname === '/api/backup' && request.method === 'GET') {
     month = validMonth(url.searchParams.get('month'));
@@ -89,8 +108,14 @@ async function handle(request, env) {
     if (!image) return json(404, { error: 'No se encontró la imagen. Revisa que se hayan migrado los comprobantes.' });
     return new Response(Buffer.from(image.data_url.split(',')[1], 'base64'), { headers: { 'Content-Type': receipt.type, 'Content-Disposition': "inline; filename*=UTF-8''" + encodeURIComponent(receipt.name) } });
   }
-  if (['/api/action', '/api/receipt'].includes(url.pathname) && request.method === 'POST') {
+  if (['/api/action', '/api/receipt', '/api/personal/action'].includes(url.pathname) && request.method === 'POST') {
     const input = await readJSON(request, url.pathname === '/api/receipt' ? 700000 : 20000);
+    if (url.pathname === '/api/personal/action') {
+      if (!personalActions.includes(input.action?.type) || !Object.hasOwn(PEOPLE, input.action?.person)) return json(400, { error: 'La operación personal no es válida.' });
+      const saved = await updateState(env.DB, state, input.action, input.revision, date);
+      return json(200, personalPayload(saved, input.action.person, input.action.month));
+    }
+    if (personalActions.includes(input.action?.type)) return json(400, { error: 'Guarda este cambio desde su calendario personal.' });
     let action = input.action, receipt;
     if (url.pathname === '/api/receipt') {
       month = validMonth(input.month);

@@ -31,11 +31,21 @@ El reparto se basa en el dinero **disponible**, no en todo el salario. Si quedan
 
 Los cambios permanentes rigen desde el ciclo seleccionado hasta el siguiente cambio permanente ya programado, si existe. Los ajustes de **Solo este ciclo** en otros meses conservan prioridad sobre los gastos habituales. Los cambios no afectan ciclos anteriores al seleccionado.
 
+## Calendarios personales
+
+La navegación **Hogar · Sofía · Daniel** abre el plan compartido y los calendarios individuales en `/sofia` y `/daniel`. Los calendarios personales muestran el mes completo: ingresos de sus cobros, pagos propios, aportaciones al hogar y dinero restante. La aportación al hogar se toma de las fechas de cada cobro y de sus importes sugeridos o ya cerrados; no se agrega otra renta personal. La segunda mitad del mes aporta al vencimiento del mes siguiente.
+
+Daniel empieza con teléfonos, Internet SP, carro, gasolina, D&D, GPT y ocio. Los gastos de Sofía —tarjeta, mesa, insumos de trabajo y ahorro— empiezan **sin fecha**, para que pueda asignarla al editar. Los ingresos usan los cobros del hogar: $24,000 por quincena para Daniel y los importes variables de Sofía.
+
+Puedes programar cada gasto una vez al mes, dividirlo entre las dos quincenas o entre todos los días de una semana elegida, o dejarlo sin fecha. El presupuesto semanal se divide entre las cuatro o cinco fechas que tenga ese mes, conservando el total exacto. Los cambios pueden aplicar solo al mes seleccionado o desde ese mes en adelante.
+
+Selecciona un pago en el calendario, la agenda o **Pagos sin fecha** para registrar su importe y fecha reales, incluso $0. El importe real sustituye el estimado de esa cuota; los otros pagos ya registrados se conservan. **Reabrir para corregir** permite corregirlo, incluso si después quitaste el gasto o cambiaste su programación. Los gastos personales no cambian el reparto de los gastos del hogar.
+
 ## Tus archivos
 
 - `data/estado.json`: todos los registros, ajustes y cierres.
 - `data/estado.respaldo.json`: el estado válido anterior al último guardado.
-- `data/ciclos/AAAA-MM.json`: resumen completo de ese vencimiento, con gastos efectivos, pagos reales, cobros, aportaciones y referencias a comprobantes.
+- `data/ciclos/AAAA-MM.json`: resumen completo de ese vencimiento, con gastos efectivos, pagos reales, cobros, aportaciones y referencias a comprobantes. Desde el primer cambio personal también incluye ambos calendarios personales del mes.
 - `data/ciclos/AAAA-MM.respaldo.json`: la copia anterior del resumen de ese ciclo.
 - `data/comprobantes/AAAA-MM/`: las imágenes originales de los comprobantes de ese ciclo.
 
@@ -49,6 +59,6 @@ El servidor local escucha solo en `127.0.0.1`. La versión de Cloudflare usa una
 
 Ejecuta `npm ci` y `npm test`. Las pruebas usan carpetas temporales y bases D1 aisladas; no modifican tus registros locales ni la nube. Para verificar solamente el servidor local sin instalar paquetes: `node --test test/domain.test.mjs test/server.test.mjs`.
 
-Para verificar las interacciones y el diseño en Chrome o Edge, ejecuta `node scripts/verificar-navegador.mjs`. Usa registros temporales y guarda capturas de escritorio y móvil en `.preview`.
+Para verificar las interacciones y el diseño en Chrome o Edge, ejecuta `node scripts/verificar-navegador.mjs`. Usa registros temporales y guarda capturas de escritorio y móvil en `.preview`. `node scripts/verificar-personales.mjs` verifica los dos calendarios personales, sus pagos, el teclado y el diseño móvil; añade `--cloud` para comprobarlos con D1 y autenticación.
 
 `node scripts/verificar-navegador.mjs --cloud` comprueba además inicio de sesión, guardado en D1, compresión de comprobantes y cierre de sesión. `npm run cloud:check` verifica la compilación del Worker sin publicarlo.

@@ -1,9 +1,10 @@
 import { applyAction, availableMonths, cycleView, validateState } from '../lib/domain.mjs';
+import { personalView } from '../lib/personal.mjs';
 
 const fail = (message, status) => Object.assign(new Error(message), { status });
 const conflict = () => fail('Los datos cambiaron en otra pestaña o dispositivo. Actualiza los datos y revisa tu cambio antes de guardarlo.', 409);
 export function snapshots(state, date) {
-  return availableMonths(state, date).map(month => ({ schemaVersion: 1, revision: state.revision, initialMonth: state.initialMonth, cycle: cycleView(state, month, date) }));
+  return availableMonths(state, date).map(month => ({ schemaVersion: 1, revision: state.revision, initialMonth: state.initialMonth, cycle: cycleView(state, month, date), ...(state.personal ? { personal: Object.fromEntries(['sofia', 'daniel'].map(person => [person, personalView(state, person, month, date)])) } : {}) }));
 }
 function stateJSON(state) {
   const json = JSON.stringify(validateState(state));

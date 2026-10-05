@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#245e4b">
+  <meta name="description" content="Calendarios personales de Sofía y Daniel: ingresos, pagos y aportaciones al hogar.">
+  <title>Mi calendario · Renta Repartida</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/personal.js" type="module"></script>
+</head>
+<body class="personal-page">
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Renta Repartida, inicio"><img src="/favicon.svg" alt="" width="38" height="38"><span>renta<span class="brand-light">repartida</span></span></a>
+    <div class="couple"><span class="avatar sofia">S</span><span class="avatar daniel">D</span><span>Sofía & Daniel</span><span class="local-pill"><span class="status-dot"></span> Activo</span></div>
+  </header>
+  <nav class="section-nav" aria-label="Calendarios"><a href="/">Hogar</a><a href="/sofia" data-personal-nav="sofia">Sofía</a><a href="/daniel" data-personal-nav="daniel">Daniel</a></nav>
+  <main>
+    <section class="page-heading">
+      <div><div class="eyebrow">TU ESPACIO, EL MISMO PLAN.</div><h1 id="personal-title">Mi calendario.</h1><p>Organiza tus gastos y mira lo que queda después de aportar al hogar.</p></div>
+      <div class="cycle-picker"><label for="personal-month">Mes</label><div><button id="personal-month-prev" class="icon-button" aria-label="Mes anterior">‹</button><select id="personal-month" aria-label="Mes del calendario personal"></select><button id="personal-month-next" class="icon-button" aria-label="Mes siguiente">›</button></div></div>
+    </section>
+    <div id="personal-load-error" class="notice error" role="alert" hidden><span id="personal-load-error-text"></span><button id="personal-retry" class="text-button">Reintentar</button></div>
+    <div id="personal-warning" class="notice" role="status" hidden></div>
+    <div id="personal-loading" class="loading">Preparando tu calendario…</div>
+    <div id="personal-workspace" hidden>
+      <section class="summary" aria-label="Resumen del mes">
+        <article class="summary-card goal-card"><div class="summary-label">TUS INGRESOS <span class="small-icon">↗</span></div><strong id="personal-income">—</strong><div id="personal-income-caption" class="summary-caption"></div></article>
+        <article class="summary-card"><div class="summary-label">GASTOS PERSONALES <span class="small-icon">◷</span></div><strong id="personal-expenses-total">—</strong><div id="personal-expenses-caption" class="summary-caption"></div></article>
+        <article class="summary-card"><div class="summary-label">APORTACIÓN AL HOGAR <span class="small-icon">⌂</span></div><strong id="personal-household-total">—</strong><div id="personal-household-caption" class="summary-caption"></div></article>
+        <article class="summary-card deadline-card"><div class="summary-label">TE QUEDA <span class="small-icon">↗</span></div><strong id="personal-remaining">—</strong><div class="summary-caption">Ingresos menos gastos y aportación al hogar</div></article>
+      </section>
+      <div id="personal-funding-alert" class="notice" role="status" hidden></div>
+      <div class="work-grid">
+        <section class="panel calendar-panel" aria-labelledby="personal-calendar-title">
+          <div class="panel-heading"><div><div class="eyebrow">CADA FECHA EN SU LUGAR</div><h2 id="personal-calendar-title">Tus cobros y pagos</h2></div><div class="legend"><span><i id="personal-income-dot"></i>Ingresos</span><span><i class="expense-dot"></i>Pagos</span><span><i class="household-dot"></i>Hogar</span></div></div>
+          <div class="calendar-navigation"><div class="month-controls"><h3 id="personal-calendar-month"></h3></div><span class="calendar-hint">Selecciona un pago para registrarlo</span></div>
+          <p class="swipe-hint">Desliza el calendario para ver todos los días →</p>
+          <div class="calendar-scroll" tabindex="0" aria-label="Calendario mensual, desplazable horizontalmente"><div class="calendar-weekdays" aria-hidden="true"><span>LUN</span><span>MAR</span><span>MIÉ</span><span>JUE</span><span>VIE</span><span>SÁB</span><span>DOM</span></div><div id="personal-calendar" class="calendar-grid"></div></div>
+          <div class="calendar-foot"><span><i class="closed-dot"></i> Pagado: conserva el importe real</span><span>Los aportes al hogar se administran en Hogar</span></div>
+          <div class="payday-list-heading"><h3>Agenda del mes</h3><span id="personal-agenda-count" class="muted"></span></div><div id="personal-agenda" class="payday-list"></div>
+          <div class="payday-list-heading"><h3>Pagos sin fecha</h3><span id="personal-unscheduled-count" class="muted"></span></div><div id="personal-unscheduled" class="payday-list"></div>
+        </section>
+        <aside class="side-column">
+          <section class="panel expenses-panel" aria-labelledby="personal-expenses-title"><div class="panel-heading"><div><div class="eyebrow">LO QUE PAGAS POR TU CUENTA</div><h2 id="personal-expenses-title">Tus gastos del mes</h2></div><button id="personal-add-expense" class="add-button" aria-label="Agregar gasto personal">+</button></div><div id="personal-expenses" class="expense-list"></div><div class="expense-total"><span>Total personal</span><strong id="personal-expense-total"></strong></div><p class="panel-note">Puedes dividir un gasto entre quincenas o semanas. Los pagos registrados conservan su importe al ajustar el presupuesto.</p></section>
+          <section class="panel split-panel"><div class="eyebrow">SU PLAN COMPARTIDO</div><h2>Aportación al hogar</h2><div class="personal-household-split"><div><span>Ya apartado</span><strong id="personal-household-saved"></strong></div><div><span>Por apartar</span><strong id="personal-household-pending"></strong></div></div><p class="panel-note">Tu parte se toma automáticamente del calendario del hogar, según la fecha de cada cobro. Incluye renta y los demás gastos compartidos.</p><a class="button secondary personal-household-link" href="/">Ver calendario del hogar →</a></section>
+        </aside>
+      </div>
+      <footer class="page-footer"><span>Hecho para nuestra vida juntos.</span><span>MXN · Hermosillo <span class="footer-dot">·</span> <span id="personal-save-status" role="status">Cargando datos…</span><button id="personal-refresh" class="text-button">Actualizar</button><form id="personal-logout-form" action="/logout" method="post" hidden><button class="text-button" type="submit">Salir</button></form></span></footer>
+    </div>
+  </main>
+  <dialog id="personal-editor" aria-labelledby="personal-editor-title"><form id="personal-editor-form"><div class="modal-header"><div><div id="personal-editor-eyebrow" class="eyebrow"></div><h2 id="personal-editor-title"></h2></div><button type="button" id="personal-close-editor" class="icon-button" aria-label="Cerrar ventana">×</button></div><div id="personal-editor-body"></div><div id="personal-form-error" class="notice error" role="alert" hidden></div><div class="modal-actions"><button type="button" id="personal-delete-expense" class="text-button danger" hidden>Quitar gasto</button><button type="button" id="personal-cancel-editor" class="button secondary">Cancelar</button><button type="submit" id="personal-submit-editor" class="button primary">Guardar cambios</button></div></form></dialog>
+  <div id="personal-toast" class="toast" role="status" hidden></div>
+</body>
+</html>

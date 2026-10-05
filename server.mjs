@@ -3,7 +3,8 @@ import { readFile, mkdir, writeFile, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Store } from './lib/store.mjs';
-import { availableMonths, cycleView, upcomingMonth, validMonth } from './lib/domain.mjs';
+import { availableMonths, cycleView, PEOPLE, today, upcomingMonth, validMonth } from './lib/domain.mjs';
+import { personalView } from './lib/personal.mjs';
 
 import { decodeReceipt } from './lib/receipts.mjs';
 export { decodeReceipt } from './lib/receipts.mjs';
@@ -12,7 +13,9 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 export async function createApp({ directory = path.join(root, 'data'), date } = {}) {
   const store = await new Store(directory, date).load();
   const payload = month => ({ revision: store.state.revision, warning: store.warning, availableMonths: availableMonths(store.state, date), cycle: cycleView(store.state, month, date) });
-  const publicFiles = { '/': ['index.html', 'text/html; charset=utf-8'], '/app.js': ['app.js', 'text/javascript; charset=utf-8'], '/style.css': ['style.css', 'text/css; charset=utf-8'], '/favicon.svg': ['favicon.svg', 'image/svg+xml'] };
+  const personalPayload = (person, month) => ({ revision: store.state.revision, warning: store.warning, storage: 'local', availableMonths: availableMonths(store.state, date), personal: personalView(store.state, person, month, date) });
+  const personalActions = ['save-personal-expense', 'delete-personal-expense', 'record-personal-payment', 'reopen-personal-payment'];
+  const publicFiles = { '/': ['index.html', 'text/html; charset=utf-8'], '/app.js': ['app.js', 'text/javascript; charset=utf-8'], '/personal.js': ['personal.js', 'text/javascript; charset=utf-8'], '/sofia': ['personal.html', 'text/html; charset=utf-8'], '/sofia/': ['personal.html', 'text/html; charset=utf-8'], '/daniel': ['personal.html', 'text/html; charset=utf-8'], '/daniel/': ['personal.html', 'text/html; charset=utf-8'], '/style.css': ['style.css', 'text/css; charset=utf-8'], '/favicon.svg': ['favicon.svg', 'image/svg+xml'] };
   const server = http.createServer(async (request, response) => {
     response.setHeader('Cache-Control', 'no-store');
     response.setHeader('X-Content-Type-Options', 'nosniff');
@@ -31,6 +34,15 @@ export async function createApp({ directory = path.join(root, 'data'), date } = 
         await store.ensureSnapshots(date);
         return json(200, payload(month));
       }
+      if (request.method === 'GET' && url.pathname === '/api/personal') {
+        const person = url.searchParams.get('person');
+        if (!Object.hasOwn(PEOPLE, person)) return json(400, { error: 'Elige el calendario de Sofía o Daniel.' });
+        const months = availableMonths(store.state, date);
+        const month = validMonth(url.searchParams.get('month') || (date || today()).slice(0, 7));
+        if (!months.includes(month)) return json(400, { error: 'Ese mes aún no está disponible. Se agregará mes con mes.' });
+        await store.ensureSnapshots(date);
+        return json(200, personalPayload(person, month));
+      }
       if (request.method === 'GET' && url.pathname === '/api/backup') {
         const month = validMonth(url.searchParams.get('month'));
         if (!availableMonths(store.state, date).includes(month)) return json(400, { error: 'Ese vencimiento no está disponible.' });
@@ -45,7 +57,7 @@ export async function createApp({ directory = path.join(root, 'data'), date } = 
         const image = await readFile(path.join(directory, 'comprobantes', match[1], match[2]));
         response.writeHead(200, { 'Content-Type': receipt.type, 'Content-Disposition': "inline; filename*=UTF-8''" + encodeURIComponent(receipt.name) }); response.end(image); return;
       }
-      if (request.method === 'POST' && ['/api/action', '/api/receipt'].includes(url.pathname)) {
+      if (request.method === 'POST' && ['/api/action', '/api/receipt', '/api/personal/action'].includes(url.pathname)) {
         if (request.headers.origin && ![`http://${authority}`, `http://localhost:${server.address().port}`].includes(request.headers.origin)) return json(403, { error: 'La solicitud debe venir de esta página.' });
         if (!request.headers['content-type']?.startsWith('application/json')) return json(415, { error: 'Formato de solicitud inválido.' });
         let body = '';
@@ -54,7 +66,13 @@ export async function createApp({ directory = path.join(root, 'data'), date } = 
         body = Buffer.concat(chunks).toString('utf8');
         let input;
         try { input = JSON.parse(body); } catch { return json(400, { error: 'La solicitud no tiene un formato válido.' }); }
-        if (!input || typeof input !== 'object') return json(400, { error: 'La solicitud no tiene un formato válido.' });
+        if (!input || typeof input !== 'object' || Array.isArray(input)) return json(400, { error: 'La solicitud no tiene un formato válido.' });
+        if (url.pathname === '/api/personal/action') {
+          if (!personalActions.includes(input.action?.type) || !Object.hasOwn(PEOPLE, input.action?.person)) return json(400, { error: 'La operación personal no es válida.' });
+          await store.update(input.action, input.revision, date);
+          return json(200, personalPayload(input.action.person, input.action.month));
+        }
+        if (personalActions.includes(input.action?.type)) return json(400, { error: 'Guarda este cambio desde su calendario personal.' });
         if (url.pathname === '/api/receipt') {
           const month = validMonth(input.month);
           if (!availableMonths(store.state, date).includes(month)) return json(400, { error: 'Ese vencimiento no está disponible.' });

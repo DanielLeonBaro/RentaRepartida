@@ -57,11 +57,13 @@ npm run cloud:deploy
 
 Esto conserva los registros en D1 y el secreto del Worker. No vuelvas a importar datos para actualizar el diseño o la lógica. Si una actualización añade migraciones, aplica antes `npx wrangler d1 migrations apply DB --remote`.
 
+Las rutas `/`, `/sofia` y `/daniel` comparten el mismo acceso y estado. La actualización que agrega los calendarios personales no requiere una migración SQL: los gastos iniciales se muestran sin modificar sus registros anteriores y se guardan con el primer cambio personal. Si abres un calendario sin sesión, después de ingresar la clave regresas a ese calendario.
+
 Para publicar con cada push, abre el Worker `renta-repartida` en Cloudflare → **Settings → Builds** y [conecta GitHub con Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/git-integration/github-integration/) al repositorio `DanielLeonBaro/RentaRepartida`, rama `main`. Directorio raíz: `/`; comando de compilación: `npm run cloud:check`; comando de despliegue: `npx wrangler deploy`. Mantén `APP_PASSWORD` como secreto del Worker; no lo incluyas en GitHub ni en el comando de compilación. Esta conexión requiere autorizar la integración de GitHub en Cloudflare y no se realiza automáticamente con un push.
 
 ## Respaldos
 
-Cada guardado conserva el JSON principal anterior y el JSON anterior de cada ciclo en D1. **Respaldar ciclo** descarga un archivo `renta-AAAA-MM.json` con gastos efectivos, pagos, cobros, cierres y referencias a comprobantes. El JSON no incluye las imágenes: descárgalas desde sus miniaturas para una copia externa completa del ciclo. La API privada `/api/backup?month=AAAA-MM&previous=1` permite descargar la versión anterior del resumen.
+Cada guardado conserva el JSON principal anterior y el JSON anterior de cada ciclo en D1. **Respaldar ciclo** descarga un archivo `renta-AAAA-MM.json` con gastos efectivos, pagos, cobros, cierres y referencias a comprobantes. Desde el primer cambio personal también incluye los calendarios de Sofía y Daniel del mes. El JSON no incluye las imágenes: descárgalas desde sus miniaturas para una copia externa completa del ciclo. La API privada `/api/backup?month=AAAA-MM&previous=1` permite descargar la versión anterior del resumen.
 
 Para restaurar **toda** la nube a un momento anterior, D1 Free tiene [Time Travel de siete días](https://developers.cloudflare.com/d1/reference/time-travel/). Puedes exportar la base completa desde D1 para conservar una copia externa con los registros y el contenido de las imágenes. Los resúmenes por ciclo son copias consultables; no sirven para sobrescribir el estado principal directamente.
 
