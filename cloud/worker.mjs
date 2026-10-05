@@ -1,5 +1,6 @@
 import { availableMonths, cycleView, PEOPLE, today, upcomingMonth, validMonth } from '../lib/domain.mjs';
 import { personalView } from '../lib/personal.mjs';
+import { DEBT_ACTIONS } from '../lib/debts.mjs';
 import { decodeReceipt } from '../lib/receipts.mjs';
 import { importState, loadState, snapshots, updateState } from './store.mjs';
 import { Buffer } from 'node:buffer';
@@ -51,7 +52,7 @@ async function handle(request, env) {
     return url.pathname.startsWith('/api/') || url.pathname.startsWith('/comprobantes/') ? json(401, { error: 'Tu sesión terminó. Vuelve a entrar para continuar.' }) : redirect(target === '/' ? '/login' : `/login?next=${encodeURIComponent(target)}`);
   }
   if (url.pathname === '/logout' && request.method === 'POST') return redirect('/login', { 'Set-Cookie': clearCookie(url) });
-  if (request.method === 'GET' && ['/', '/app.js', '/personal.js'].includes(url.pathname)) return env.ASSETS.fetch(request);
+  if (request.method === 'GET' && ['/', '/app.js', '/personal.js', '/debts.js'].includes(url.pathname)) return env.ASSETS.fetch(request);
   if (request.method === 'GET' && ['/sofia', '/daniel', '/sofia/', '/daniel/'].includes(url.pathname)) {
     const asset = new URL(request.url); asset.pathname = '/personal';
     return env.ASSETS.fetch(new Request(asset, request));
@@ -108,8 +109,16 @@ async function handle(request, env) {
     if (!image) return json(404, { error: 'No se encontró la imagen. Revisa que se hayan migrado los comprobantes.' });
     return new Response(Buffer.from(image.data_url.split(',')[1], 'base64'), { headers: { 'Content-Type': receipt.type, 'Content-Disposition': "inline; filename*=UTF-8''" + encodeURIComponent(receipt.name) } });
   }
-  if (['/api/action', '/api/receipt', '/api/personal/action'].includes(url.pathname) && request.method === 'POST') {
+  if (['/api/action', '/api/receipt', '/api/personal/action', '/api/debts/action'].includes(url.pathname) && request.method === 'POST') {
     const input = await readJSON(request, url.pathname === '/api/receipt' ? 700000 : 20000);
+    if (url.pathname === '/api/debts/action') {
+      if (!DEBT_ACTIONS.includes(input.action?.type) || !(input.viewOwner === 'hogar' || Object.hasOwn(PEOPLE, input.viewOwner))) return json(400, { error: 'La operación de deuda no es válida.' });
+      month = validMonth(input.viewMonth ?? input.action.month);
+      if (!months.includes(month)) return json(400, { error: 'Ese mes aún no está disponible.' });
+      const saved = await updateState(env.DB, state, input.action, input.revision, date);
+      return json(200, input.viewOwner === 'hogar' ? payload(saved) : personalPayload(saved, input.viewOwner, month));
+    }
+    if (DEBT_ACTIONS.includes(input.action?.type)) return json(400, { error: 'Guarda este cambio desde la sección de deudas.' });
     if (url.pathname === '/api/personal/action') {
       if (!personalActions.includes(input.action?.type) || !Object.hasOwn(PEOPLE, input.action?.person)) return json(400, { error: 'La operación personal no es válida.' });
       const saved = await updateState(env.DB, state, input.action, input.revision, date);

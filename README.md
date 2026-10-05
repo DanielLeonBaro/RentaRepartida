@@ -41,11 +41,25 @@ Puedes programar cada gasto una vez al mes, dividirlo entre las dos quincenas o 
 
 Selecciona un pago en el calendario, la agenda o **Pagos sin fecha** para registrar su importe y fecha reales, incluso $0. El importe real sustituye el estimado de esa cuota; los otros pagos ya registrados se conservan. **Reabrir para corregir** permite corregirlo, incluso si después quitaste el gasto o cambiaste su programación. Los gastos personales no cambian el reparto de los gastos del hogar.
 
+## Deudas y abonos
+
+Cada calendario tiene una sección **Deudas**, para Daniel, Sofía o el hogar. Las deudas permanecen entre meses y conservan el saldo pendiente y su historial de abonos. Daniel empieza con Hey banco $70,000 (día 13), CITI Banamex $10,000 (sin fecha), NU $8,000 (día 17), BBVA $20,000 (día 12) y MercadoPago $24,000 (día 1). Sofía y el hogar empiezan sin deudas.
+
+**Agregar deuda** y **Editar** permiten elegir a quién corresponde, corregir el saldo actual y asignar un día de pago mensual. Un día que no exista en un mes usa el último día. El **abono mensual planeado** es opcional y empieza en $0: pueden abonar cantidades distintas a tarjetas distintas cada mes. El saldo completo no se carga como gasto mensual.
+
+El abono previsto aplica solo al mes seleccionado: los otros meses siguen en $0 salvo que definas sus importes. Cambiar la meta de un mes no cambia la de otro. El nombre, la persona, el saldo y el día de pago de una deuda se conservan entre meses.
+
+Pulsa **Abonar** para registrar la cantidad y fecha reales. Por ejemplo, un abono de $2,000 a Hey banco baja su saldo de $70,000 a $68,000. Puedes corregir o anular un abono desde su historial; se actualizan el saldo y el presupuesto del mes correspondiente. Si corriges el saldo de una deuda, los abonos anteriores permanecen en el historial. El sistema rechaza un abono que supere el saldo pendiente.
+
+Los abonos de una persona cuentan en sus gastos personales del mes elegido. Los del hogar entran en el total del ciclo y recalculan las aportaciones pendientes, conservando las cerradas. Igual que con los otros pagos, registrar un abono al banco y registrar dinero apartado son operaciones distintas. Si defines un abono mensual planeado, el presupuesto incluye lo que falta de esa meta además de lo ya pagado; la meta por sí sola no reduce la deuda.
+
+**Eliminar deuda** la retira del plan y conserva sus abonos registrados en el historial y en el mes al que corresponden. Los registros quedan incluidos en el estado principal y los respaldos por ciclo, tanto localmente como en D1.
+
 ## Tus archivos
 
 - `data/estado.json`: todos los registros, ajustes y cierres.
 - `data/estado.respaldo.json`: el estado válido anterior al último guardado.
-- `data/ciclos/AAAA-MM.json`: resumen completo de ese vencimiento, con gastos efectivos, pagos reales, cobros, aportaciones y referencias a comprobantes. Desde el primer cambio personal también incluye ambos calendarios personales del mes.
+- `data/ciclos/AAAA-MM.json`: resumen completo de ese vencimiento, con gastos efectivos, pagos reales, cobros, aportaciones y referencias a comprobantes. Desde el primer cambio personal o de deudas también incluye ambos calendarios personales del mes, con saldos e historial de abonos.
 - `data/ciclos/AAAA-MM.respaldo.json`: la copia anterior del resumen de ese ciclo.
 - `data/comprobantes/AAAA-MM/`: las imágenes originales de los comprobantes de ese ciclo.
 
@@ -61,4 +75,4 @@ Ejecuta `npm ci` y `npm test`. Las pruebas usan carpetas temporales y bases D1 a
 
 Para verificar las interacciones y el diseño en Chrome o Edge, ejecuta `node scripts/verificar-navegador.mjs`. Usa registros temporales y guarda capturas de escritorio y móvil en `.preview`. `node scripts/verificar-personales.mjs` verifica los dos calendarios personales, sus pagos, el teclado y el diseño móvil; añade `--cloud` para comprobarlos con D1 y autenticación.
 
-`node scripts/verificar-navegador.mjs --cloud` comprueba además inicio de sesión, guardado en D1, compresión de comprobantes y cierre de sesión. `npm run cloud:check` verifica la compilación del Worker sin publicarlo.
+`node scripts/verificar-navegador.mjs --cloud` comprueba además inicio de sesión, guardado en D1, compresión de comprobantes y cierre de sesión. `node scripts/verificar-deudas.mjs` verifica deudas, abonos, correcciones y calendarios; también admite `--cloud`. `npm run cloud:check` verifica la compilación del Worker sin publicarlo.

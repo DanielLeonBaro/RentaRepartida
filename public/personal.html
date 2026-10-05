@@ -27,14 +27,14 @@
     <div id="personal-workspace" hidden>
       <section class="summary" aria-label="Resumen del mes">
         <article class="summary-card goal-card"><div class="summary-label">TUS INGRESOS <span class="small-icon">↗</span></div><strong id="personal-income">—</strong><div id="personal-income-caption" class="summary-caption"></div></article>
-        <article class="summary-card"><div class="summary-label">GASTOS PERSONALES <span class="small-icon">◷</span></div><strong id="personal-expenses-total">—</strong><div id="personal-expenses-caption" class="summary-caption"></div></article>
+        <article class="summary-card"><div class="summary-label">GASTOS Y ABONOS <span class="small-icon">◷</span></div><strong id="personal-expenses-total">—</strong><div id="personal-expenses-caption" class="summary-caption"></div></article>
         <article class="summary-card"><div class="summary-label">APORTACIÓN AL HOGAR <span class="small-icon">⌂</span></div><strong id="personal-household-total">—</strong><div id="personal-household-caption" class="summary-caption"></div></article>
         <article class="summary-card deadline-card"><div class="summary-label">TE QUEDA <span class="small-icon">↗</span></div><strong id="personal-remaining">—</strong><div class="summary-caption">Ingresos menos gastos y aportación al hogar</div></article>
       </section>
       <div id="personal-funding-alert" class="notice" role="status" hidden></div>
       <div class="work-grid">
         <section class="panel calendar-panel" aria-labelledby="personal-calendar-title">
-          <div class="panel-heading"><div><div class="eyebrow">CADA FECHA EN SU LUGAR</div><h2 id="personal-calendar-title">Tus cobros y pagos</h2></div><div class="legend"><span><i id="personal-income-dot"></i>Ingresos</span><span><i class="expense-dot"></i>Pagos</span><span><i class="household-dot"></i>Hogar</span></div></div>
+          <div class="panel-heading"><div><div class="eyebrow">CADA FECHA EN SU LUGAR</div><h2 id="personal-calendar-title">Tus cobros y pagos</h2></div><div class="legend"><span><i id="personal-income-dot"></i>Ingresos</span><span><i class="expense-dot"></i>Pagos</span><span><i class="household-dot"></i>Hogar</span><span><i class="debt-dot"></i>Deudas</span></div></div>
           <div class="calendar-navigation"><div class="month-controls"><h3 id="personal-calendar-month"></h3></div><span class="calendar-hint">Selecciona un pago para registrarlo</span></div>
           <p class="swipe-hint">Desliza el calendario para ver todos los días →</p>
           <div class="calendar-scroll" tabindex="0" aria-label="Calendario mensual, desplazable horizontalmente"><div class="calendar-weekdays" aria-hidden="true"><span>LUN</span><span>MAR</span><span>MIÉ</span><span>JUE</span><span>VIE</span><span>SÁB</span><span>DOM</span></div><div id="personal-calendar" class="calendar-grid"></div></div>
@@ -43,7 +43,8 @@
           <div class="payday-list-heading"><h3>Pagos sin fecha</h3><span id="personal-unscheduled-count" class="muted"></span></div><div id="personal-unscheduled" class="payday-list"></div>
         </section>
         <aside class="side-column">
-          <section class="panel expenses-panel" aria-labelledby="personal-expenses-title"><div class="panel-heading"><div><div class="eyebrow">LO QUE PAGAS POR TU CUENTA</div><h2 id="personal-expenses-title">Tus gastos del mes</h2></div><button id="personal-add-expense" class="add-button" aria-label="Agregar gasto personal">+</button></div><div id="personal-expenses" class="expense-list"></div><div class="expense-total"><span>Total personal</span><strong id="personal-expense-total"></strong></div><p class="panel-note">Puedes dividir un gasto entre quincenas o semanas. Los pagos registrados conservan su importe al ajustar el presupuesto.</p></section>
+          <section class="panel expenses-panel" aria-labelledby="personal-expenses-title"><div class="panel-heading"><div><div class="eyebrow">LO QUE PAGAS POR TU CUENTA</div><h2 id="personal-expenses-title">Tus gastos del mes</h2></div><button id="personal-add-expense" class="add-button" aria-label="Agregar gasto personal">+</button></div><div id="personal-expenses" class="expense-list"></div><div class="expense-total"><span>Total de gastos</span><strong id="personal-expense-total"></strong></div><p class="panel-note">Puedes dividir un gasto entre quincenas o semanas. Los pagos registrados conservan su importe al ajustar el presupuesto. El resumen también incluye tus abonos de deudas de este mes.</p></section>
+          <section id="debts-panel" class="panel debts-panel" aria-label="Deudas personales"></section>
           <section class="panel split-panel"><div class="eyebrow">SU PLAN COMPARTIDO</div><h2>Aportación al hogar</h2><div class="personal-household-split"><div><span>Ya apartado</span><strong id="personal-household-saved"></strong></div><div><span>Por apartar</span><strong id="personal-household-pending"></strong></div></div><p class="panel-note">Tu parte se toma automáticamente del calendario del hogar, según la fecha de cada cobro. Incluye renta y los demás gastos compartidos.</p><a class="button secondary personal-household-link" href="/">Ver calendario del hogar →</a></section>
         </aside>
       </div>

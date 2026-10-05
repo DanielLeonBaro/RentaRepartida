@@ -1,3 +1,5 @@
+import { createDebtManager } from '/debts.js';
+
 const $ = id => document.getElementById(id);
 const currency = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
 const cash = cents => currency.format(cents / 100);
@@ -10,6 +12,7 @@ const shiftMonth = (month, offset) => { const [y, m] = month.split('-').map(Numb
 const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const percentage = value => new Intl.NumberFormat('es-MX', { style: 'percent', maximumFractionDigits: 2 }).format(value);
 let data, calendarMonth, modal, busy = false, requestNumber = 0, toastTimer;
+const debts = createDebtManager({ getData: () => data, onSaved: result => { ++requestNumber; data = result; render(); }, toast });
 const icons = { renta: '⌂', despensa: '▤', luz: 'ϟ', agua: '◉', internet: '⌁', ahorro: '↗' };
 
 async function api(url, options) {
@@ -50,7 +53,8 @@ function render() {
   $('total').textContent = cash(t.total);
   $('saved').textContent = cash(t.saved);
   $('pending').textContent = cash(t.pending);
-  $('expense-total').textContent = cash(t.total);
+  $('expense-total').textContent = cash(cycle.expenses.reduce((sum, expense) => sum + expense.amount, 0));
+  debts.render(cycle.debts);
   $('cycle-range').textContent = `${shortDate(cycle.start)} — ${shortDate(cycle.deadline)}`;
   $('saved-caption').textContent = `${percentage(t.total ? t.saved / t.total : 0)} de su meta · ${cycle.paydays.filter(p => p.closed).length} cobros cerrados`;
   $('progress').style.width = `${t.total ? Math.min(100, t.saved / t.total * 100) : 0}%`;
@@ -81,6 +85,7 @@ function render() {
     const date = e.payment?.paidDate || e.dueDate;
     return `<button class="payday-row expense-payment-row" data-expense-payment="${escape(e.id)}"><span class="expense-icon" aria-hidden="true">${icons[e.id] || '·'}</span><span class="payday-detail"><strong>${escape(e.name)}${date ? ` · ${shortDate(date)}` : ''}</strong><small>${date ? `Presupuesto ${cash(e.plannedAmount)}` : 'Asigna su fecha en Editar gasto'}</small></span><span class="payday-state ${e.payment ? 'closed' : date && date < cycle.today ? 'overdue' : ''}">${e.payment ? '✓ Pagado' : date && date < cycle.today ? 'Vencido' : 'Por pagar'}</span><span class="payday-amount">${cash(e.amount)}<small>${e.payment ? 'pago real' : 'estimado'}</small></span></button>`;
   }).join('') || '<p class="empty-note">Agrega un gasto para programar su pago.</p>';
+  $('debt-agenda').innerHTML = debts.agendaEvents().sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999')).map(debts.agendaRow).join('') || '<p class="empty-note">Sin abonos de deudas programados para este mes.</p>';
   renderCalendar();
 }
 function renderCalendar() {
@@ -101,6 +106,7 @@ function renderCalendar() {
     const rows = cycle.paydays.filter(p => p.date === date && !outside);
     const payments = cycle.expenses.filter(e => (e.payment?.paidDate || e.dueDate) === date && !outside);
     html.push(`<div class="day ${outside ? 'outside' : !active ? 'off-cycle' : ''} ${date === cycle.today ? 'today' : ''} ${date === cycle.deadline && !outside ? 'deadline' : ''}"><span class="day-number">${first.getUTCDate()}</span>${date === cycle.deadline && !outside ? '<span class="deadline-tag">DÍA DE RENTA</span>' : ''}${rows.map(p => `<button class="event ${p.person} ${p.closed ? 'closed' : ''}" data-payday="${escape(p.id)}" aria-label="${escape(longDate(date))}: ${names[p.person]}, ${cash(p.closed ? p.paid : p.suggested)} ${p.closed ? 'apartado' : 'por apartar'}"><span class="event-name">${names[p.person]}<span>${p.closed ? '✓' : '↗'}</span></span><span class="event-income">Cobro ${cash(p.income)}</span><span class="event-amount">${cash(p.closed ? p.paid : p.suggested)}</span><span class="event-status ${p.overdue ? 'overdue' : ''}">${p.closed ? 'Cerrado · apartado' : p.overdue ? 'Vencido · por apartar' : 'Por apartar'}</span></button>`).join('')}${payments.map(e => `<button class="event expense-event" data-expense-payment="${escape(e.id)}" aria-label="${escape(e.name)}, ${shortDate(date)}, ${cash(e.amount)} ${e.payment ? 'pagado' : 'por pagar'}"><span class="event-name">${escape(e.name)}<span>${e.payment ? '✓' : '◷'}</span></span><span class="event-amount">${cash(e.amount)}</span><span class="event-status">${e.payment ? 'Pagado' : 'Por pagar'}</span></button>`).join('')}</div>`);
+    html[html.length - 1] = html.at(-1).replace(/<\/div>$/, `${outside ? '' : debts.calendarEvents(date)}</div>`);
     first.setUTCDate(first.getUTCDate() + 1);
   }
   $('calendar').innerHTML = html.join('');

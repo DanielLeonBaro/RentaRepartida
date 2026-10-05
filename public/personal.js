@@ -1,3 +1,5 @@
+import { createDebtManager } from '/debts.js';
+
 const $ = id => document.getElementById(id);
 const person = location.pathname.replace(/\/+$/, '').slice(1);
 const names = { sofia: 'Sofía', daniel: 'Daniel' };
@@ -11,6 +13,7 @@ const monthName = month => dateFormat(`${month}-01`, { month: 'long', year: 'num
 const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const weekdays = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 let data, modal, busy = false, requestNumber = 0, toastTimer, returnFocus;
+const debts = createDebtManager({ getData: () => data, onSaved: result => { ++requestNumber; data = result; render(); }, toast });
 
 async function api(url, options) {
   let response;
@@ -56,7 +59,8 @@ function render() {
   $('personal-month-next').disabled = p.month === months.at(-1);
   $('personal-income').textContent = cash(t.income);
   $('personal-expenses-total').textContent = cash(t.expenses);
-  $('personal-expense-total').textContent = cash(t.expenses);
+  $('personal-expense-total').textContent = cash(p.expenses.reduce((sum, expense) => sum + expense.amount, 0));
+  debts.render(p.debts);
   $('personal-household-total').textContent = cash(t.household);
   $('personal-remaining').textContent = cash(t.remaining);
   $('personal-remaining').classList.toggle('danger', t.remaining < 0);
@@ -80,15 +84,20 @@ function render() {
   const agenda = [
     ...p.incomePaydays.map(payday => ({ type: 'income', date: payday.date, row: payday })),
     ...p.household.contributions.map(contribution => ({ type: 'household', date: contribution.date, row: contribution })),
-    ...p.payments.filter(payment => paymentCalendarDate(payment)).map(payment => ({ type: 'payment', date: paymentCalendarDate(payment), row: payment }))
+    ...p.payments.filter(payment => paymentCalendarDate(payment)).map(payment => ({ type: 'payment', date: paymentCalendarDate(payment), row: payment })),
+    ...debts.agendaEvents().filter(event => event.date)
   ].sort((a, b) => a.date.localeCompare(b.date) || a.type.localeCompare(b.type));
   $('personal-agenda-count').textContent = `${agenda.length} movimientos`;
   $('personal-agenda').innerHTML = agenda.map(event => agendaRow(event)).join('') || '<p class="empty-note">No hay movimientos programados este mes.</p>';
-  const unscheduled = p.payments.filter(payment => !paymentCalendarDate(payment));
+  const unscheduled = [
+    ...p.payments.filter(payment => !paymentCalendarDate(payment)).map(row => ({ type: 'payment', row })),
+    ...debts.agendaEvents().filter(event => !event.date)
+  ];
   $('personal-unscheduled-count').textContent = `${unscheduled.length} ${unscheduled.length === 1 ? 'pago' : 'pagos'}`;
-  $('personal-unscheduled').innerHTML = unscheduled.map(payment => agendaRow({ type: 'payment', row: payment })).join('') || '<p class="empty-note">Todos tus pagos tienen fecha.</p>';
+  $('personal-unscheduled').innerHTML = unscheduled.map(agendaRow).join('') || '<p class="empty-note">Todos tus pagos tienen fecha.</p>';
 }
 function agendaRow({ type, date, row }) {
+  if (type.startsWith('debt')) return debts.agendaRow({ type, date, row, debtId: row.debtId || row.id });
   const dateText = date ? ` · ${shortDate(date)}` : '';
   if (type === 'income') return `<a class="payday-row personal-agenda-income" href="${householdHref(row.cycleMonth)}"><span class="avatar ${person}">${name[0]}</span><span class="payday-detail"><strong>Tu cobro${dateText}</strong><small>Ingreso estimado · ${data.availableMonths.includes(row.cycleMonth) ? 'editar en Hogar' : 'estimación del próximo ciclo'}</small></span><span class="payday-amount">${cash(row.income)}<small>ingreso</small></span></a>`;
   if (type === 'household') return `<a class="payday-row" href="${householdHref(row.cycleMonth)}"><span class="expense-icon household-icon" aria-hidden="true">⌂</span><span class="payday-detail"><strong>Aportación al hogar${dateText}</strong><small>Vencimiento ${shortDate(`${row.cycleMonth}-15`)} · ${data.availableMonths.includes(row.cycleMonth) ? 'ver en Hogar' : 'estimación del próximo ciclo'}</small></span><span class="payday-state ${row.closed ? 'closed' : ''}">${row.closed ? '✓ Apartado' : 'Sugerido'}</span><span class="payday-amount">${cash(row.amount)}<small>${row.closed ? 'aportación real' : 'por apartar'}</small></span></a>`;
@@ -109,6 +118,7 @@ function renderCalendar() {
     const household = p.household.contributions.filter(row => row.date === date && !outside);
     const payments = p.payments.filter(payment => paymentCalendarDate(payment) === date && !outside);
     html.push(`<div class="day ${outside ? 'outside' : ''} ${date === p.today ? 'today' : ''}"><span class="day-number">${first.getUTCDate()}</span>${income.map(payday => `<a class="event ${person} personal-income-event" href="${householdHref(payday.cycleMonth)}" aria-label="${escape(longDate(date))}, ingreso estimado ${cash(payday.income)}; ver en Hogar"><span class="event-name">Tu cobro<span>↗</span></span><span class="event-amount">${cash(payday.income)}</span><span class="event-status">Ingreso estimado</span></a>`).join('')}${household.map(row => `<a class="event household-event ${row.closed ? 'closed' : ''}" href="${householdHref(row.cycleMonth)}" aria-label="${escape(longDate(date))}, aportación al hogar ${cash(row.amount)} ${row.closed ? 'apartado' : 'sugerido'}; ver en Hogar"><span class="event-name">Al hogar<span>${row.closed ? '✓' : '⌂'}</span></span><span class="event-amount">${cash(row.amount)}</span><span class="event-status">${row.closed ? 'Ya apartado' : data.availableMonths.includes(row.cycleMonth) ? 'Por apartar' : 'Próximo ciclo'}</span></a>`).join('')}${payments.map(payment => `<button class="event expense-event ${payment.paid ? 'closed' : ''}" data-personal-payment="${escape(payment.id)}" aria-label="${escape(longDate(date))}, ${escape(payment.name)}, ${cash(payment.amount)} ${payment.paid ? `pagado el ${shortDate(payment.paidDate)}` : 'por pagar'}"><span class="event-name">${escape(payment.name)}<span>${payment.paid ? '✓' : '◷'}</span></span><span class="event-amount">${cash(payment.amount)}</span><span class="event-status ${payment.overdue ? 'overdue' : ''}">${payment.paid ? `Pagado ${shortDate(payment.paidDate)}` : payment.overdue ? 'Vencido' : 'Por pagar'}</span></button>`).join('')}</div>`);
+    html[html.length - 1] = html.at(-1).replace(/<\/div>$/, `${outside ? '' : debts.calendarEvents(date)}</div>`);
     first.setUTCDate(first.getUTCDate() + 1);
   }
   $('personal-calendar').innerHTML = html.join('');

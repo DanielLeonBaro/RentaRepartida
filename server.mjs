@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Store } from './lib/store.mjs';
 import { availableMonths, cycleView, PEOPLE, today, upcomingMonth, validMonth } from './lib/domain.mjs';
 import { personalView } from './lib/personal.mjs';
+import { DEBT_ACTIONS } from './lib/debts.mjs';
 
 import { decodeReceipt } from './lib/receipts.mjs';
 export { decodeReceipt } from './lib/receipts.mjs';
@@ -15,7 +16,7 @@ export async function createApp({ directory = path.join(root, 'data'), date } = 
   const payload = month => ({ revision: store.state.revision, warning: store.warning, availableMonths: availableMonths(store.state, date), cycle: cycleView(store.state, month, date) });
   const personalPayload = (person, month) => ({ revision: store.state.revision, warning: store.warning, storage: 'local', availableMonths: availableMonths(store.state, date), personal: personalView(store.state, person, month, date) });
   const personalActions = ['save-personal-expense', 'delete-personal-expense', 'record-personal-payment', 'reopen-personal-payment'];
-  const publicFiles = { '/': ['index.html', 'text/html; charset=utf-8'], '/app.js': ['app.js', 'text/javascript; charset=utf-8'], '/personal.js': ['personal.js', 'text/javascript; charset=utf-8'], '/sofia': ['personal.html', 'text/html; charset=utf-8'], '/sofia/': ['personal.html', 'text/html; charset=utf-8'], '/daniel': ['personal.html', 'text/html; charset=utf-8'], '/daniel/': ['personal.html', 'text/html; charset=utf-8'], '/style.css': ['style.css', 'text/css; charset=utf-8'], '/favicon.svg': ['favicon.svg', 'image/svg+xml'] };
+  const publicFiles = { '/': ['index.html', 'text/html; charset=utf-8'], '/app.js': ['app.js', 'text/javascript; charset=utf-8'], '/personal.js': ['personal.js', 'text/javascript; charset=utf-8'], '/debts.js': ['debts.js', 'text/javascript; charset=utf-8'], '/sofia': ['personal.html', 'text/html; charset=utf-8'], '/sofia/': ['personal.html', 'text/html; charset=utf-8'], '/daniel': ['personal.html', 'text/html; charset=utf-8'], '/daniel/': ['personal.html', 'text/html; charset=utf-8'], '/style.css': ['style.css', 'text/css; charset=utf-8'], '/favicon.svg': ['favicon.svg', 'image/svg+xml'] };
   const server = http.createServer(async (request, response) => {
     response.setHeader('Cache-Control', 'no-store');
     response.setHeader('X-Content-Type-Options', 'nosniff');
@@ -57,7 +58,7 @@ export async function createApp({ directory = path.join(root, 'data'), date } = 
         const image = await readFile(path.join(directory, 'comprobantes', match[1], match[2]));
         response.writeHead(200, { 'Content-Type': receipt.type, 'Content-Disposition': "inline; filename*=UTF-8''" + encodeURIComponent(receipt.name) }); response.end(image); return;
       }
-      if (request.method === 'POST' && ['/api/action', '/api/receipt', '/api/personal/action'].includes(url.pathname)) {
+      if (request.method === 'POST' && ['/api/action', '/api/receipt', '/api/personal/action', '/api/debts/action'].includes(url.pathname)) {
         if (request.headers.origin && ![`http://${authority}`, `http://localhost:${server.address().port}`].includes(request.headers.origin)) return json(403, { error: 'La solicitud debe venir de esta página.' });
         if (!request.headers['content-type']?.startsWith('application/json')) return json(415, { error: 'Formato de solicitud inválido.' });
         let body = '';
@@ -67,6 +68,14 @@ export async function createApp({ directory = path.join(root, 'data'), date } = 
         let input;
         try { input = JSON.parse(body); } catch { return json(400, { error: 'La solicitud no tiene un formato válido.' }); }
         if (!input || typeof input !== 'object' || Array.isArray(input)) return json(400, { error: 'La solicitud no tiene un formato válido.' });
+        if (url.pathname === '/api/debts/action') {
+          if (!DEBT_ACTIONS.includes(input.action?.type) || !(input.viewOwner === 'hogar' || Object.hasOwn(PEOPLE, input.viewOwner))) return json(400, { error: 'La operación de deuda no es válida.' });
+          const viewMonth = validMonth(input.viewMonth ?? input.action.month);
+          if (!availableMonths(store.state, date).includes(viewMonth)) return json(400, { error: 'Ese mes aún no está disponible.' });
+          await store.update(input.action, input.revision, date);
+          return json(200, input.viewOwner === 'hogar' ? payload(viewMonth) : personalPayload(input.viewOwner, viewMonth));
+        }
+        if (DEBT_ACTIONS.includes(input.action?.type)) return json(400, { error: 'Guarda este cambio desde la sección de deudas.' });
         if (url.pathname === '/api/personal/action') {
           if (!personalActions.includes(input.action?.type) || !Object.hasOwn(PEOPLE, input.action?.person)) return json(400, { error: 'La operación personal no es válida.' });
           await store.update(input.action, input.revision, date);

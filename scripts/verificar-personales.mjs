@@ -28,7 +28,7 @@ if (cloud) {
   store = { state: await loadState(db), async update(action, revision) { this.state = await updateState(db, this.state, action, revision, date); } };
   const env = { DB: db, APP_PASSWORD: password, ASSETS: { async fetch(request) {
     const route = new URL(request.url).pathname;
-    const files = { '/': ['index.html', 'text/html'], '/personal': ['personal.html', 'text/html'], '/personal.js': ['personal.js', 'text/javascript'], '/app.js': ['app.js', 'text/javascript'], '/style.css': ['style.css', 'text/css'], '/favicon.svg': ['favicon.svg', 'image/svg+xml'] };
+    const files = { '/': ['index.html', 'text/html'], '/personal': ['personal.html', 'text/html'], '/personal.js': ['personal.js', 'text/javascript'], '/app.js': ['app.js', 'text/javascript'], '/debts.js': ['debts.js', 'text/javascript'], '/style.css': ['style.css', 'text/css'], '/favicon.svg': ['favicon.svg', 'image/svg+xml'] };
     const file = files[route];
     return file ? new Response(await readFile(new URL('../public/' + file[0], import.meta.url)), { headers: { 'Content-Type': file[1] + ';charset=utf-8' } }) : new Response('', { status: 404 });
   } } };
