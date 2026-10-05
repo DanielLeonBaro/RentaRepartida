@@ -14,7 +14,7 @@ const icons = { renta: '⌂', despensa: '▤', luz: 'ϟ', agua: '◉', internet:
 
 async function api(url, options) {
   let response;
-  try { response = await fetch(url, options); } catch { throw new Error('No se pudo conectar con la aplicación. Comprueba que siga encendida y vuelve a intentarlo.'); }
+  try { response = await fetch(url, options); } catch { throw new Error('No se pudo conectar. Revisa tu conexión y vuelve a intentarlo.'); }
   const result = await response.json();
   if (!response.ok) { const error = new Error(result.error || 'No se pudo completar la operación.'); error.status = response.status; throw error; }
   return result;
@@ -39,6 +39,9 @@ async function load(month, { retainCalendar = false } = {}) {
 }
 function render() {
   const cycle = data.cycle, t = cycle.totals;
+  $('save-status').textContent = data.storage === 'cloud' ? 'Datos compartidos guardados' : 'Datos guardados en esta computadora';
+  $('logout-form').hidden = data.storage !== 'cloud';
+  $('download-backup').href = `/api/backup?month=${cycle.month}`;
   const months = data.availableMonths || [cycle.month];
   $('cycle-month').innerHTML = months.map(month => `<option value="${month}">${monthName(month)}</option>`).join('');
   $('cycle-month').value = cycle.month;
@@ -148,7 +151,23 @@ function receiptCards(p) {
   return (p.receipts || []).map(r => `<a class="receipt-card" href="/comprobantes/${data.cycle.month}/${r.id}" target="_blank" rel="noopener"><img src="/comprobantes/${data.cycle.month}/${r.id}" alt="Comprobante: ${escape(r.name)}"><span>${escape(r.name)}</span></a>`).join('') || '<p class="form-help">Todavía no hay comprobantes.</p>';
 }
 function receiptSection(p) {
-  return `<section class="receipt-section"><h3>Comprobantes de esta aportación</h3><div id="receipt-list" class="receipt-list">${receiptCards(p)}</div><p class="form-help">Imagen de la captura o comprobante</p><div class="receipt-upload"><div class="file-picker"><input id="receipt-file" type="file" accept="image/png,image/jpeg,image/webp" class="visually-hidden"><label for="receipt-file" class="button secondary">Elegir imagen</label><span id="receipt-file-name" class="form-help">Sin imagen seleccionada</span></div><button type="button" id="upload-receipt" class="button secondary">Guardar imagen</button></div><p class="form-help">PNG, JPG o WebP · hasta 10 MB. Se guarda en esta computadora.</p></section>`;
+  return `<section class="receipt-section"><h3>Comprobantes de esta aportación</h3><div id="receipt-list" class="receipt-list">${receiptCards(p)}</div><p class="form-help">Imagen de la captura o comprobante</p><div class="receipt-upload"><div class="file-picker"><input id="receipt-file" type="file" accept="image/png,image/jpeg,image/webp" class="visually-hidden"><label for="receipt-file" class="button secondary">Elegir imagen</label><span id="receipt-file-name" class="form-help">Sin imagen seleccionada</span></div><button type="button" id="upload-receipt" class="button secondary">Guardar imagen</button></div><p class="form-help">PNG, JPG o WebP · hasta 10 MB. ${data.storage === 'cloud' ? 'Se comprime a WebP de hasta 500 KB para guardar y compartir. Revisa que los datos del comprobante sigan legibles.' : 'Se guarda en esta computadora.'}</p></section>`;
+}
+async function receiptDataUrl(file) {
+  let blob = file;
+  if (data.storage === 'cloud') {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', 0.82));
+    if (!blob) throw new Error('No se pudo comprimir la imagen. Intenta con otra captura.');
+    if (blob.size > 500000) throw new Error('La imagen comprimida supera 500 KB. Recorta la captura y vuelve a elegirla.');
+  }
+  return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(new Error('No se pudo leer la imagen.')); reader.readAsDataURL(blob); });
 }
 function bindReceiptUpload(id) {
   $('receipt-file').addEventListener('change', () => { $('receipt-file-name').textContent = $('receipt-file').files[0]?.name || 'Sin imagen seleccionada'; });
@@ -159,13 +178,13 @@ function bindReceiptUpload(id) {
     if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || !file.size || file.size > 10 * 1024 * 1024) return showFormError('Elige una imagen PNG, JPG o WebP de hasta 10 MB.');
     setBusy(true); $('form-error').hidden = true;
     try {
-      const dataUrl = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(new Error('No se pudo leer la imagen.')); reader.readAsDataURL(file); });
+      const dataUrl = await receiptDataUrl(file);
       const result = await api('/api/receipt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ month: modal.month, paydayId: id, revision: modal.revision, name: file.name, dataUrl }) });
       ++requestNumber; data = result; modal.revision = result.revision; render();
       $('receipt-list').innerHTML = receiptCards(result.cycle.paydays.find(p => p.id === id));
       $('receipt-file').value = '';
       $('receipt-file-name').textContent = 'Sin imagen seleccionada';
-      toast('Comprobante guardado en esta computadora.');
+      toast(data.storage === 'cloud' ? 'Comprobante guardado y compartido.' : 'Comprobante guardado en esta computadora.');
     } catch (error) { showFormError(error.message); }
     finally { setBusy(false); }
   });

@@ -7,3 +7,6 @@ coverage/
 .env.*
 .dev.vars
 .dev.vars.*
+.cache/
+.deploy/
+worker-configuration.d.ts

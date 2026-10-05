@@ -3,6 +3,20 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "scripts": { "start": "node server.mjs", "test": "node --test" },
-  "engines": { "node": ">=22" }
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test",
+    "cloud:dev": "wrangler dev --local",
+    "cloud:check": "wrangler deploy --dry-run",
+    "cloud:deploy": "wrangler deploy",
+    "cloud:setup": "node scripts/configurar-cloudflare.mjs",
+    "cloud:import": "node scripts/migrar-cloudflare.mjs --remote"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "miniflare": "5.20261001.0-alpha",
+    "wrangler": "^4.147.0"
+  }
 }

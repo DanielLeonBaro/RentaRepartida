@@ -1,8 +1,8 @@
 # Renta Repartida
 
-Una aplicación local, en español, para apartar entre Sofía y Daniel el dinero de la renta y los gastos. Requiere Node.js 22 o posterior (ya instalado en esta computadora). No necesita instalar paquetes, cuentas ni conexión a internet.
+Una aplicación en español para apartar entre Sofía y Daniel el dinero de la renta y los gastos. Tiene una versión local con archivos JSON y una versión compartida para Cloudflare Workers + D1, que funciona con la computadora apagada y guarda los comprobantes sin R2.
 
-Para consultar opciones de publicación, lee [Alojamiento en GitHub y Cloudflare](docs/alojamiento.md). Esta versión guarda los datos en el disco de la computadora donde corre el servidor.
+La versión local requiere Node.js 22 o posterior y funciona sin paquetes ni conexión. Para publicar y compartirla, sigue [Alojamiento en Cloudflare](docs/alojamiento.md).
 
 ## Abrir
 
@@ -43,10 +43,12 @@ Para hacer un respaldo externo, copia **toda la carpeta data** con el servidor d
 
 Cada guardado comprueba si otra pestaña ha modificado los datos. En caso de conflicto, el formulario permite actualizar sin perder lo escrito y revisar antes de volver a guardar.
 
-La aplicación escucha solo en `127.0.0.1`; no está publicada ni disponible desde otros dispositivos. Todos los importes son pesos mexicanos y las fechas usan Hermosillo.
+El servidor local escucha solo en `127.0.0.1`. La versión de Cloudflare usa una clave compartida, protege las imágenes y guarda los cambios en D1; sus datos son independientes de la carpeta local. Todos los importes son pesos mexicanos y las fechas usan Hermosillo. **Respaldar ciclo** descarga el JSON del vencimiento seleccionado.
 
 ## Verificar
 
-Ejecuta `node --test`. Las pruebas usan carpetas temporales y no modifican tus registros.
+Ejecuta `npm ci` y `npm test`. Las pruebas usan carpetas temporales y bases D1 aisladas; no modifican tus registros locales ni la nube. Para verificar solamente el servidor local sin instalar paquetes: `node --test test/domain.test.mjs test/server.test.mjs`.
 
 Para verificar las interacciones y el diseño en Chrome o Edge, ejecuta `node scripts/verificar-navegador.mjs`. Usa registros temporales y guarda capturas de escritorio y móvil en `.preview`.
+
+`node scripts/verificar-navegador.mjs --cloud` comprueba además inicio de sesión, guardado en D1, compresión de comprobantes y cierre de sesión. `npm run cloud:check` verifica la compilación del Worker sin publicarlo.

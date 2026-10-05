@@ -5,18 +5,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Store } from './lib/store.mjs';
 import { availableMonths, cycleView, upcomingMonth, validMonth } from './lib/domain.mjs';
 
-export function decodeReceipt(dataUrl) {
-  const match = typeof dataUrl === 'string' && /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(dataUrl);
-  if (!match || match[2].length % 4 !== 0) throw Object.assign(new Error('Sube una imagen PNG, JPG o WebP válida.'), { status: 400 });
-  const buffer = Buffer.from(match[2], 'base64');
-  const signature = buffer.subarray(0, 12);
-  const type = signature.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) ? 'image/png'
-    : signature[0] === 255 && signature[1] === 216 && signature[2] === 255 ? 'image/jpeg'
-      : signature.subarray(0, 4).toString() === 'RIFF' && signature.subarray(8, 12).toString() === 'WEBP' ? 'image/webp' : null;
-  if (type !== match[1] || buffer.toString('base64') !== match[2]) throw Object.assign(new Error('El archivo no coincide con una imagen válida.'), { status: 400 });
-  if (buffer.length > 10 * 1024 * 1024) throw Object.assign(new Error('El comprobante debe pesar como máximo 10 MB.'), { status: 413 });
-  return { buffer, type, extension: { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' }[type] };
-}
+import { decodeReceipt } from './lib/receipts.mjs';
+export { decodeReceipt } from './lib/receipts.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 export async function createApp({ directory = path.join(root, 'data'), date } = {}) {
@@ -40,6 +30,13 @@ export async function createApp({ directory = path.join(root, 'data'), date } = 
         if (!months.includes(month)) return json(400, { error: 'Ese vencimiento aún no está disponible. Se agregará mes con mes.' });
         await store.ensureSnapshots(date);
         return json(200, payload(month));
+      }
+      if (request.method === 'GET' && url.pathname === '/api/backup') {
+        const month = validMonth(url.searchParams.get('month'));
+        if (!availableMonths(store.state, date).includes(month)) return json(400, { error: 'Ese vencimiento no está disponible.' });
+        await store.ensureSnapshots(date);
+        const content = await readFile(path.join(directory, 'ciclos', `${month}.json`));
+        response.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Content-Disposition': `attachment; filename="renta-${month}.json"` }); response.end(content); return;
       }
       if (request.method === 'GET' && url.pathname.startsWith('/comprobantes/')) {
         const match = /^\/comprobantes\/(\d{4}-\d{2})\/([a-f0-9-]{36}\.(png|jpg|webp))$/.exec(url.pathname);

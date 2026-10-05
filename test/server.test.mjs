@@ -30,6 +30,10 @@ test('serves the Spanish application locally and guards mutation requests', asyn
   }); assert.equal(hostStatus, 403);
   const traversal = await fetch(`${f.origin}/data/estado.json`); assert.equal(traversal.status, 404);
   const invalid = await fetch(`${f.origin}/api/cycle?month=2026-99`); assert.equal(invalid.status, 400);
+  const snapshot = await fetch(`${f.origin}/api/backup?month=2026-10`);
+  assert.equal(snapshot.status, 200); assert.match(snapshot.headers.get('Content-Disposition'), /renta-2026-10.json/);
+  assert.equal((await snapshot.json()).cycle.totals.total, 1780000);
+  assert.equal((await fetch(`${f.origin}/api/backup?month=2026-09`)).status, 400);
   const malformed = await fetch(`${f.origin}/api/action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{' }); assert.equal(malformed.status, 400);
 });
 test('saving writes exact JSON, keeps a prior backup and survives reopening', async t => {
