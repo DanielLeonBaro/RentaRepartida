@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#245e4b">
+  <meta name="description" content="Calendario local de aportaciones de Sofía y Daniel para sus gastos y renta.">
+  <title>Renta Repartida · Sofía y Daniel</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" type="module"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Renta Repartida, inicio"><img src="/favicon.svg" alt="" width="38" height="38"><span>renta<span class="brand-light">repartida</span></span></a>
+    <div class="couple"><span class="avatar sofia">S</span><span class="avatar daniel">D</span><span>Sofía & Daniel</span><span class="local-pill"><span class="status-dot"></span> Solo en tu compu</span></div>
+  </header>
+  <main>
+    <section class="page-heading">
+      <div><div class="eyebrow">SU PLAN, COBRO A COBRO</div><h1>Un hogar, un plan compartido.</h1><p>Aparten a su ritmo. Lleguen juntos al día 15.</p></div>
+      <div class="cycle-picker"><label for="cycle-month">Vencimiento</label><div><button id="cycle-prev" class="icon-button" aria-label="Vencimiento anterior">‹</button><select id="cycle-month" aria-label="Mes del vencimiento"></select><button id="cycle-next" class="icon-button" aria-label="Vencimiento siguiente">›</button></div></div>
+    </section>
+    <div id="load-error" class="notice error" hidden><span id="load-error-text"></span><button id="retry" class="text-button">Reintentar</button></div>
+    <div id="warning" class="notice" role="status" hidden></div>
+    <div id="loading" class="loading">Preparando su calendario…</div>
+    <div id="workspace" hidden>
+      <section class="summary" aria-label="Resumen del ciclo">
+        <article class="summary-card goal-card"><div class="summary-label">META DEL CICLO <span class="small-icon">⌂</span></div><strong id="total">—</strong><div id="cycle-range" class="summary-caption"></div></article>
+        <article class="summary-card"><div class="summary-label">YA APARTARON <span class="small-icon">✓</span></div><strong id="saved">—</strong><div class="progress-track"><div id="progress" class="progress-fill"></div></div><div id="saved-caption" class="summary-caption"></div></article>
+        <article class="summary-card"><div class="summary-label">FALTA APARTAR <span class="small-icon">↗</span></div><strong id="pending">—</strong><div id="pending-caption" class="summary-caption"></div></article>
+        <article class="summary-card deadline-card"><div class="summary-label">SU FECHA LÍMITE <span class="small-icon">◷</span></div><strong id="deadline">—</strong><div id="deadline-caption" class="summary-caption"></div></article>
+      </section>
+      <div id="funding-alert" class="notice" role="status" hidden></div>
+      <div class="work-grid">
+        <section class="panel calendar-panel" aria-labelledby="calendar-title">
+          <div class="panel-heading"><div><div class="eyebrow">CADA COBRO CUENTA</div><h2 id="calendar-title">Calendario de cobros y pagos</h2></div><div class="legend"><span><i class="sofia-dot"></i>Sofía</span><span><i class="daniel-dot"></i>Daniel</span><span><i class="expense-dot"></i>Gastos</span></div></div>
+          <div class="calendar-navigation"><div class="month-controls"><button id="calendar-prev" class="icon-button" aria-label="Mes anterior del ciclo">‹</button><h3 id="calendar-month"></h3><button id="calendar-next" class="icon-button" aria-label="Mes siguiente del ciclo">›</button></div><span class="calendar-hint">Selecciona un cobro para editarlo</span></div>
+          <p class="swipe-hint">Desliza el calendario para ver todos los días →</p><div class="calendar-scroll" tabindex="0" aria-label="Calendario mensual, desplazable horizontalmente"><div class="calendar-weekdays" aria-hidden="true"><span>LUN</span><span>MAR</span><span>MIÉ</span><span>JUE</span><span>VIE</span><span>SÁB</span><span>DOM</span></div><div id="calendar" class="calendar-grid"></div></div>
+          <div class="calendar-foot"><span><i class="closed-dot"></i> Cerrado: fijo hasta que lo reabran</span><span><i class="deadline-dot"></i> Vencimiento de la renta</span></div>
+          <div class="payday-list-heading"><h3>Los cobros de este ciclo</h3><span id="payday-count" class="muted"></span></div><div id="payday-list" class="payday-list"></div>
+          <div class="payday-list-heading"><h3>Calendario de pagos</h3><span class="muted">Presupuesto y pago real</span></div><div id="expense-payments" class="payday-list"></div>
+        </section>
+        <aside class="side-column">
+          <section class="panel expenses-panel" aria-labelledby="expenses-title"><div class="panel-heading"><div><div class="eyebrow">LO QUE VAN A CUBRIR</div><h2 id="expenses-title">Gastos del ciclo</h2></div><button id="add-expense" class="add-button" aria-label="Agregar gasto">+</button></div><div id="expenses" class="expense-list"></div><div class="expense-total"><span>Total del ciclo</span><strong id="expense-total"></strong></div><p class="panel-note">Al registrar un pago real, ese importe reemplaza el presupuesto de este ciclo. La meta de ahorro sigue siendo el día 15.</p></section>
+          <section class="panel split-panel"><div class="eyebrow">UN REPARTO PROPORCIONAL</div><h2>¿Cuánto pone cada quien?</h2><div id="person-summaries"></div><div class="formula-note"><span class="formula-icon">%</span><p id="split-explanation"></p></div><p class="panel-note">El reparto usa el dinero disponible de cada cobro pendiente. Los cobros cerrados se respetan.</p></section>
+        </aside>
+      </div>
+      <footer class="page-footer"><span>Hecho para su vida juntos.</span><span>MXN · Hermosillo <span class="footer-dot">·</span> <span id="save-status" role="status">Datos guardados en esta computadora</span><button id="refresh" class="text-button">Actualizar</button></span></footer>
+    </div>
+  </main>
+  <dialog id="editor" aria-labelledby="editor-title"><form id="editor-form"><div class="modal-header"><div><div id="editor-eyebrow" class="eyebrow"></div><h2 id="editor-title"></h2></div><button type="button" id="close-editor" class="icon-button" aria-label="Cerrar ventana">×</button></div><div id="editor-body"></div><div id="form-error" class="notice error" role="alert" hidden></div><div class="modal-actions"><button type="button" id="delete-expense" class="text-button danger" hidden>Quitar gasto</button><button type="button" id="cancel-editor" class="button secondary">Cancelar</button><button type="submit" id="submit-editor" class="button primary">Guardar cambios</button></div></form></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>

@@ -1,0 +1,9 @@
+data/
+node_modules/
+coverage/
+.preview/
+.wrangler/
+.env
+.env.*
+.dev.vars
+.dev.vars.*
